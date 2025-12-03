@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recomendaciones – SisCine</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <!-- Navbar -->
+    <div id="navbar"></div>
+
+    <main class="max-w-6xl mx-auto px-6 pt-28 pb-20">
+        <h1 class="text-4xl font-extrabold mb-8">🎬 Recomendaciones para ti</h1>
+
+        <div id="recommendationsContainer"></div>
+    </main>
+
+    <!-- Navbar Component -->
+    <script type="text/babel" src="../../components/Navbar.jsx"></script>
+    <script type="text/babel">
+        ReactDOM.createRoot(document.getElementById("navbar")).render(<Navbar />);
+    </script>
+
+    <!-- API Helper -->
+    <script src="../utils/api.js"></script>
+
+    <!-- PAGE SCRIPT -->
+    <script type="text/babel">
+
+        function RecommendationItem({ movie }) {
+            return (
+                <div className="bg-slate-800 rounded-xl overflow-hidden shadow-lg border border-slate-700 group hover:scale-105 duration-200 cursor-pointer">
+                    <a href={`movie-detail.html?id=${movie.id}`}>
+                        <img
+                            src={movie.poster_url || '/assets/images/placeholder.jpg'}
+                            className="w-full h-80 object-cover group-hover:opacity-90"
+                        />
+
+                        <div className="p-4 space-y-2">
+                            <h3 className="text-xl font-semibold">{movie.title}</h3>
+
+                            <p className="text-slate-400 text-sm line-clamp-2">
+                                {movie.synopsis?.slice(0, 120) || "Sin descripción disponible..."}...
+                            </p>
+
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className="text-yellow-400 text-lg">★</span>
+                                <span className="text-slate-300">{movie.avg_rating ?? 0}/5</span>
+                            </div>
+
+                            <button
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 mt-4 rounded-lg"
+                            >
+                                Ver Detalles
+                            </button>
+                        </div>
+                    </a>
+                </div>
+            );
+        }
+
+        function RecommendationsPage() {
+
+            const [movies, setMovies] = React.useState([]);
+            const [loading, setLoading] = React.useState(true);
+
+            React.useEffect(() => {
+                loadRecommendations();
+            }, []);
+
+            async function loadRecommendations() {
+                try {
+                    const res = await api.get("/recommendations");
+                    setMovies(res.data || []);
+                } catch (err) {
+                    console.error("Error cargando recomendaciones", err);
+                }
+                setLoading(false);
+            }
+
+            if (loading) {
+                return <p className="text-center text-slate-400">Cargando recomendaciones...</p>;
+            }
+
+            return (
+                <div>
+
+                    {movies.length === 0 ? (
+                        <p className="text-slate-400 text-lg">
+                            No hay suficientes datos aún para darte recomendaciones 😢  
+                            <br /> Mira algunas películas y vuelve más tarde.
+                        </p>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {movies.map((movie) => (
+                                <RecommendationItem key={movie.id} movie={movie} />
+                            ))}
+                        </div>
+                    )}
+
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("recommendationsContainer"))
+            .render(<RecommendationsPage />);
+    </script>
+
+</body>
+
+</html>

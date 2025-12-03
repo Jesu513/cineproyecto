@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pagar Reserva – SisCine</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Stripe -->
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+    <div id="navbar"></div>
+
+    <main class="max-w-4xl mx-auto px-6 pt-28 pb-20">
+        <div id="paymentContainer"></div>
+    </main>
+
+    <!-- Navbar -->
+    <script type="text/babel" src="../../components/Navbar.jsx"></script>
+    <script type="text/babel">
+        ReactDOM.createRoot(document.getElementById("navbar")).render(<Navbar />);
+    </script>
+
+    <!-- API -->
+    <script src="../utils/api.js"></script>
+
+    <!-- Payment Page Logic -->
+    <script type="text/babel">
+
+        function PaymentPage() {
+            const params = new URLSearchParams(window.location.search);
+            const movieId = params.get("movie_id");
+            const showtimeId = params.get("showtime_id");
+            const seatIds = params.get("seats")?.split(",") || [];
+
+            const [movie, setMovie] = React.useState(null);
+            const [showtime, setShowtime] = React.useState(null);
+            const [seats, setSeats] = React.useState([]);
+            const [total, setTotal] = React.useState(0);
+
+            React.useEffect(() => {
+                loadMovie();
+                loadShowtime();
+                loadSelectedSeats();
+            }, []);
+
+            async function loadMovie() {
+                const res = await api.get(`/movies/${movieId}`);
+                setMovie(res.data);
+            }
+
+            async function loadShowtime() {
+                const res = await api.get(`/showtimes/${showtimeId}`);
+                setShowtime(res.data);
+            }
+
+            async function loadSelectedSeats() {
+                const res = await api.post("/seats/bulk", { seat_ids: seatIds });
+                setSeats(res.data);
+            }
+
+            React.useEffect(() => {
+                if (showtime && seats.length > 0) {
+                    const sum = seats.reduce((acc, s) => acc + (showtime.base_price * s.price_modifier), 0);
+                    setTotal(sum);
+                }
+            }, [showtime, seats]);
+
+            // Stripe Logic
+            async function handlePayment() {
+                const stripe = Stripe("pk_test_1234567890"); // ← coloca tu PUBLIC KEY real aquí
+
+                const intent = await api.post("/payments/create-intent", {
+                    amount: total,
+                    showtime_id: showtimeId,
+                    seats: seatIds
+                });
+
+                const { client_secret } = intent.data;
+
+                const result = await stripe.confirmCardPayment(client_secret, {
+                    payment_method: {
+                        card: elements.getElement(CardElement)
+                    }
+                });
+
+                if (result.error) {
+                    alert("Error en el pago: " + result.error.message);
+                    return;
+                }
+
+                // Pago completado
+                alert("Pago realizado correctamente");
+                window.location.href = "./my-bookings.html";
+            }
+
+            if (!movie || !showtime) {
+                return <p className="text-center text-slate-400">Cargando datos...</p>;
+            }
+
+            return (
+                <div className="space-y-8">
+
+                    {/* RESUMEN */}
+                    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <h2 className="text-2xl font-semibold mb-4">Resumen de la reserva</h2>
+
+                        <p className="text-lg font-bold mb-2">{movie.title}</p>
+                        <p className="text-slate-300">
+                            {showtime.show_date} – {showtime.show_time}
+                        </p>
+                        <p className="text-slate-400 text-sm mb-3">
+                            Sala: {showtime.room_name}
+                        </p>
+
+                        <h3 className="text-xl font-bold mt-4">Asientos Seleccionados:</h3>
+                        <ul className="text-slate-300 ml-4">
+                            {seats.map(s => (
+                                <li key={s.id}>
+                                    Fila {s.row_label} – Asiento {s.seat_number}
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="mt-6 text-xl">
+                            Total: <span className="text-emerald-400 font-bold">S/ {total.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    {/* MÉTODO DE PAGO */}
+                    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <h2 className="text-2xl font-semibold mb-4">Método de pago</h2>
+
+                        {/* Stripe card element */}
+                        <div id="card-element" className="p-4 bg-slate-700 rounded-lg mb-4"></div>
+
+                        <button
+                            onClick={handlePayment}
+                            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold">
+                            Pagar Ahora
+                        </button>
+                    </div>
+
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("paymentContainer"))
+            .render(<PaymentPage />);
+
+    </script>
+
+</body>
+
+</html>

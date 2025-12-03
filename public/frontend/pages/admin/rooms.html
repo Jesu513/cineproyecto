@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Salas</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div class="flex">
+
+        <!-- SIDEBAR -->
+        <div id="adminSidebar" class="w-64"></div>
+
+        <!-- MAIN -->
+        <main class="flex-1 p-10">
+
+            <h1 class="text-4xl font-bold mb-8">🏟️ Gestión de Salas</h1>
+
+            <!-- ACCIONES SUPERIORES -->
+            <div class="flex justify-between mb-6">
+
+                <div></div>
+
+                <button id="btnAddRoom"
+                    class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg font-semibold">
+                    + Crear Sala
+                </button>
+            </div>
+
+            <!-- TABLA -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-slate-700 text-left">
+                            <th class="p-3">Nombre</th>
+                            <th class="p-3">Filas</th>
+                            <th class="p-3">Columnas</th>
+                            <th class="p-3">Capacidad</th>
+                            <th class="p-3">Tipo</th>
+                            <th class="p-3">Estado</th>
+                            <th class="p-3">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roomsTable"></tbody>
+                </table>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- COMPONENTS -->
+    <script type="text/babel" src="../../components/AdminSidebar.jsx"></script>
+    <script type="text/babel" src="../../components/Modal.jsx"></script>
+
+    <!-- API Helper -->
+    <script src="../../utils/api.js"></script>
+
+    <!-- PAGE LOGIC -->
+    <script type="text/babel">
+
+        // Sidebar
+        ReactDOM.createRoot(document.getElementById("adminSidebar"))
+            .render(<AdminSidebar active="rooms" />);
+
+        let roomsList = [];
+        let editingRoom = null;
+
+        // =============================
+        // 1. Cargar salas
+        // =============================
+        async function loadRooms() {
+            const res = await api.get("/admin/rooms");
+            roomsList = res.data || [];
+            redrawTable();
+        }
+
+        // =============================
+        // 2. Dibujar tabla
+        // =============================
+        function redrawTable() {
+            const tbody = document.getElementById("roomsTable");
+            tbody.innerHTML = "";
+
+            roomsList.forEach(room => {
+                const tr = document.createElement("tr");
+                tr.className = "border-b border-slate-700";
+
+                const statusBadge = room.is_active
+                    ? '<span class="px-3 py-1 rounded text-sm bg-emerald-600">Activa</span>'
+                    : '<span class="px-3 py-1 rounded text-sm bg-red-600">Inactiva</span>';
+
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold">${room.name}</td>
+                    <td class="p-3">${room.rows}</td>
+                    <td class="p-3">${room.columns}</td>
+                    <td class="p-3">${room.capacity}</td>
+                    <td class="p-3 capitalize">${room.room_type}</td>
+                    <td class="p-3">${statusBadge}</td>
+
+                    <td class="p-3">
+                        <button class="text-emerald-400 hover:text-emerald-300 mr-3"
+                                onclick="editRoom(${room.id})">Editar</button>
+
+                        <button class="text-yellow-400 hover:text-yellow-300 mr-3"
+                                onclick="generateSeats(${room.id})">
+                            Generar Asientos
+                        </button>
+
+                        <button class="text-red-400 hover:text-red-300"
+                                onclick="toggleRoom(${room.id}, ${room.is_active})">
+                            ${room.is_active ? "Desactivar" : "Activar"}
+                        </button>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Exponer funciones
+        window.editRoom = editRoom;
+        window.generateSeats = generateSeats;
+        window.toggleRoom = toggleRoom;
+
+        // =============================
+        // 3. Abrir modal de sala
+        // =============================
+        document.getElementById("btnAddRoom").onclick = () => {
+            editingRoom = null;
+            openRoomModal();
+        };
+
+        function editRoom(id) {
+            editingRoom = roomsList.find(r => r.id === id);
+            openRoomModal(editingRoom);
+        }
+
+        // =============================
+        // 4. Activar / desactivar sala
+        // =============================
+        async function toggleRoom(id, currentState) {
+            await api.patch(`/admin/rooms/${id}/status`, {
+                is_active: !currentState
+            });
+            loadRooms();
+        }
+
+        // =============================
+        // 5. Generar asientos automáticos
+        // =============================
+        async function generateSeats(id) {
+            if (!confirm("¿Generar los asientos de esta sala? Esto reemplazará los anteriores.")) return;
+
+            await api.post(`/admin/rooms/${id}/generate-seats`);
+            alert("Asientos generados correctamente.");
+        }
+
+        // =============================
+        // 6. Modal Crear/Editar Sala
+        // =============================
+        function openRoomModal(room = null) {
+
+            const modalContent = (
+                <div className="space-y-4">
+
+                    <input id="rm_name" defaultValue={room?.name || ""}
+                           placeholder="Nombre de Sala"
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <input id="rm_rows" type="number" defaultValue={room?.rows || ""}
+                           placeholder="Número de Filas"
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <input id="rm_cols" type="number" defaultValue={room?.columns || ""}
+                           placeholder="Asientos por Fila"
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <select id="rm_type" defaultValue={room?.room_type || "standard"}
+                            className="w-full p-2 bg-slate-800 border border-slate-700 rounded">
+                        <option value="standard">Standard</option>
+                        <option value="vip">VIP</option>
+                        <option value="imax">IMAX</option>
+                        <option value="3d">3D</option>
+                        <option value="4dx">4DX</option>
+                    </select>
+
+                    <div className="flex items-center gap-2 mt-2">
+                        <input id="rm_active" type="checkbox" defaultChecked={room?.is_active ?? true} />
+                        <label className="text-sm">Sala activa</label>
+                    </div>
+
+                </div>
+            );
+
+            const onConfirm = async () => {
+
+                const payload = {
+                    name: document.getElementById("rm_name").value,
+                    rows: parseInt(document.getElementById("rm_rows").value),
+                    columns: parseInt(document.getElementById("rm_cols").value),
+                    capacity: parseInt(document.getElementById("rm_rows").value) * parseInt(document.getElementById("rm_cols").value),
+                    room_type: document.getElementById("rm_type").value,
+                    is_active: document.getElementById("rm_active").checked
+                };
+
+                if (!payload.name || !payload.rows || !payload.columns) {
+                    alert("Todos los campos son obligatorios.");
+                    return;
+                }
+
+                try {
+                    if (editingRoom) {
+                        await api.put(`/admin/rooms/${editingRoom.id}`, payload);
+                    } else {
+                        await api.post("/admin/rooms", payload);
+                    }
+
+                    loadRooms();
+                } catch (err) {
+                    console.error(err);
+                    alert("Error al guardar la sala.");
+                }
+            };
+
+            Modal.show({
+                title: room ? "Editar Sala" : "Crear Sala",
+                content: modalContent,
+                confirmText: "Guardar",
+                onConfirm
+            });
+        }
+
+        // =============================
+        // 7. Inicializar
+        // =============================
+        loadRooms();
+
+    </script>
+
+</body>
+
+</html>

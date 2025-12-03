@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staff – Reserva Manual</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div class="flex">
+
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-slate-800 h-screen p-5 space-y-6 border-r border-slate-700">
+            <h2 class="text-2xl font-bold mb-4">🎫 Staff</h2>
+
+            <nav class="space-y-3">
+                <a href="dashboard.html" class="block px-3 py-2 rounded hover:bg-slate-700">📊 Dashboard</a>
+                <a href="validate-booking.html" class="block px-3 py-2 rounded hover:bg-slate-700">🔍 Validar Reservas</a>
+                <a href="manual-booking.html" class="block px-3 py-2 rounded bg-sky-600 font-semibold">📝 Reserva Manual</a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 p-10 space-y-10">
+
+            <h1 class="text-4xl font-bold mb-6">📝 Reserva Manual</h1>
+
+            <!-- FORM CARD -->
+            <div class="bg-slate-800 p-6 border border-slate-700 rounded-xl space-y-6">
+
+                <!-- Selección de película -->
+                <div>
+                    <label class="block text-sm text-slate-300">Película</label>
+                    <select id="movieSelect"
+                        onchange="loadShowtimes()"
+                        class="w-full p-3 mt-1 bg-slate-700 border border-slate-600 rounded">
+                        <option value="">Seleccione una película</option>
+                    </select>
+                </div>
+
+                <!-- Selección de horario -->
+                <div>
+                    <label class="block text-sm text-slate-300">Horario</label>
+                    <select id="showtimeSelect"
+                        onchange="loadSeatMap()"
+                        class="w-full p-3 mt-1 bg-slate-700 border border-slate-600 rounded">
+                        <option value="">Seleccione un horario</option>
+                    </select>
+                </div>
+
+                <!-- Mapa de asientos -->
+                <div id="seatSection" class="hidden">
+                    <h2 class="text-xl font-semibold mb-3">🎟️ Selección de Asientos</h2>
+                    <div id="seatMap" class="grid grid-cols-10 gap-2"></div>
+                </div>
+
+                <!-- Datos del cliente -->
+                <div id="customerSection" class="hidden">
+                    <h2 class="text-xl font-semibold mb-3">👤 Datos del Cliente</h2>
+
+                    <input id="customerName" placeholder="Nombre del cliente"
+                           class="w-full p-3 mt-1 bg-slate-700 border border-slate-600 rounded" />
+
+                    <input id="customerEmail" placeholder="Correo (opcional)"
+                           class="w-full p-3 mt-3 bg-slate-700 border border-slate-600 rounded" />
+
+                    <select id="paymentMethod"
+                            class="w-full p-3 mt-3 bg-slate-700 border border-slate-600 rounded">
+                        <option value="cash">Pago en efectivo</option>
+                        <option value="qr">Pago QR (simulado)</option>
+                    </select>
+                </div>
+
+                <!-- Botón generar reserva -->
+                <button id="btnCreateBooking"
+                        onclick="confirmManualBooking()"
+                        class="hidden w-full mt-6 px-4 py-3 rounded bg-emerald-600 hover:bg-emerald-500 text-lg font-semibold">
+                    Generar Reserva
+                </button>
+
+            </div>
+
+        </main>
+    </div>
+
+    <script src="../../utils/api.js"></script>
+
+    <script>
+
+        let selectedSeats = [];
+
+        // ========================================
+        // 1. Cargar películas activas
+        // ========================================
+        async function loadMovies() {
+            const res = await api.get("/movies?status=active");
+            const movies = res.data || [];
+
+            const select = document.getElementById("movieSelect");
+            movies.forEach(m => {
+                const opt = document.createElement("option");
+                opt.value = m.id;
+                opt.textContent = m.title;
+                select.appendChild(opt);
+            });
+        }
+
+        // ========================================
+        // 2. Cargar horarios según película
+        // ========================================
+        async function loadShowtimes() {
+            selectedSeats = [];
+
+            document.getElementById("seatSection").classList.add("hidden");
+            document.getElementById("customerSection").classList.add("hidden");
+            document.getElementById("btnCreateBooking").classList.add("hidden");
+
+            const movieId = document.getElementById("movieSelect").value;
+
+            const res = await api.get(`/movies/${movieId}/showtimes`);
+            const showtimes = res.data || [];
+
+            const select = document.getElementById("showtimeSelect");
+            select.innerHTML = "<option value=''>Seleccione un horario</option>";
+
+            showtimes.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = s.id;
+                opt.textContent = `${s.show_date} - ${s.show_time} (Sala: ${s.room_name})`;
+                select.appendChild(opt);
+            });
+        }
+
+        // ========================================
+        // 3. Cargar mapa de asientos
+        // ========================================
+        async function loadSeatMap() {
+            selectedSeats = [];
+
+            const showtimeId = document.getElementById("showtimeSelect").value;
+
+            const res = await api.get(`/showtimes/${showtimeId}/seats`);
+            const seats = res.data || [];
+
+            document.getElementById("seatSection").classList.remove("hidden");
+
+            const map = document.getElementById("seatMap");
+            map.innerHTML = "";
+
+            seats.forEach(seat => {
+                const btn = document.createElement("button");
+
+                btn.textContent = seat.row_label + seat.seat_number;
+                btn.className = `
+                    p-2 rounded text-sm transition 
+                    ${seat.status === "occupied" ? "bg-red-600 cursor-not-allowed" :
+                    "bg-slate-700 hover:bg-sky-600"} 
+                `;
+
+                btn.disabled = seat.status === "occupied";
+
+                btn.onclick = () => toggleSeat(seat, btn);
+
+                map.appendChild(btn);
+            });
+        }
+
+        // ========================================
+        // 4. Seleccionar asiento
+        // ========================================
+        function toggleSeat(seat, btn) {
+            const key = seat.row_label + seat.seat_number;
+
+            if (selectedSeats.includes(seat.id)) {
+                selectedSeats = selectedSeats.filter(id => id !== seat.id);
+                btn.classList.remove("bg-sky-600");
+                btn.classList.add("bg-slate-700");
+            } else {
+                selectedSeats.push(seat.id);
+                btn.classList.remove("bg-slate-700");
+                btn.classList.add("bg-sky-600");
+            }
+
+            if (selectedSeats.length > 0) {
+                document.getElementById("customerSection").classList.remove("hidden");
+                document.getElementById("btnCreateBooking").classList.remove("hidden");
+            } else {
+                document.getElementById("customerSection").classList.add("hidden");
+                document.getElementById("btnCreateBooking").classList.add("hidden");
+            }
+        }
+
+        // ========================================
+        // 5. Crear reserva manual
+        // ========================================
+        async function confirmManualBooking() {
+            const movieId = document.getElementById("movieSelect").value;
+            const showtimeId = document.getElementById("showtimeSelect").value;
+
+            const payload = {
+                movie_id: movieId,
+                showtime_id: showtimeId,
+                seats: selectedSeats,
+                customer_name: document.getElementById("customerName").value,
+                customer_email: document.getElementById("customerEmail").value,
+                payment_method: document.getElementById("paymentMethod").value
+            };
+
+            const res = await api.post("/staff/booking/manual", payload);
+
+            alert("Reserva creada exitosamente.");
+
+            const ticketId = res.data.booking_id;
+            window.open(`/api/staff/booking/${ticketId}/ticket`, "_blank");
+        }
+
+        // Inicializar
+        loadMovies();
+
+    </script>
+
+</body>
+</html>

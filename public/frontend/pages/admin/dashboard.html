@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Dashboard</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div class="flex">
+
+        <!-- SIDEBAR -->
+        <div id="adminSidebar" class="w-64"></div>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 p-10">
+
+            <h1 class="text-4xl font-bold mb-8">📊 Dashboard Administrativo</h1>
+
+            <!-- CARDS -->
+            <div id="statsCards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10"></div>
+
+            <!-- GRAFICO -->
+            <section class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700 mb-10">
+                <h2 class="text-2xl font-semibold mb-4">Reservas de los últimos 7 días</h2>
+                <div id="chartContainer"></div>
+            </section>
+
+            <!-- TABLA -->
+            <section class="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
+                <h2 class="text-2xl font-semibold mb-6">Últimas Reservas</h2>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-slate-700">
+                            <th class="p-3 text-left">Código</th>
+                            <th class="p-3 text-left">Usuario</th>
+                            <th class="p-3 text-left">Película</th>
+                            <th class="p-3 text-left">Fecha</th>
+                            <th class="p-3 text-left">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="latestBookings"></tbody>
+                </table>
+            </section>
+
+        </main>
+    </div>
+
+
+    <!-- Components -->
+    <script type="text/babel" src="../../components/AdminSidebar.jsx"></script>
+
+    <!-- API -->
+    <script src="../../utils/api.js"></script>
+
+    <!-- PAGE LOGIC -->
+    <script type="text/babel">
+
+        // 🔹 1. SIDEBAR
+        ReactDOM.createRoot(document.getElementById("adminSidebar"))
+                .render(<AdminSidebar active="dashboard" />);
+
+
+        // 🔹 2. ESTADÍSTICAS
+        async function loadStats() {
+            const res = await api.get("/admin/dashboard");
+            const stats = res.data;
+
+            const container = document.getElementById("statsCards");
+            container.innerHTML = "";
+
+            const items = [
+                { label: "Ingresos Totales", value: `S/ ${stats.total_income}` },
+                { label: "Películas Activas", value: stats.active_movies },
+                { label: "Salas", value: stats.rooms },
+                { label: "Reservas Hoy", value: stats.today_bookings },
+            ];
+
+            items.forEach(item => {
+                const card = document.createElement("div");
+                card.className =
+                    "bg-slate-800 border border-slate-700 p-6 rounded-xl shadow-lg";
+                card.innerHTML = `
+                    <div class="text-3xl font-bold">${item.value}</div>
+                    <div class="text-slate-400 mt-1">${item.label}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+
+        // 🔹 3. GRÁFICO BÁSICO (sin librerías externas)
+        async function loadChart() {
+            const res = await api.get("/admin/bookings/last7days");
+            const data = res.data;
+
+            const container = document.getElementById("chartContainer");
+            container.innerHTML = `
+                <div class="flex items-end gap-3 h-48">
+                    ${data.map(d => `
+                        <div class="flex flex-col items-center">
+                            <div class="bg-emerald-500 w-10 rounded"
+                                 style="height: ${d.count * 12}px"></div>
+                            <span class="text-sm text-slate-400 mt-1">${d.day}</span>
+                        </div>
+                    `).join("")}
+                </div>
+            `;
+        }
+
+
+        // 🔹 4. ÚLTIMAS RESERVAS
+        async function loadLatestBookings() {
+            const res = await api.get("/admin/bookings/latest");
+            const list = res.data;
+
+            const tbody = document.getElementById("latestBookings");
+            tbody.innerHTML = "";
+
+            list.forEach(b => {
+                const tr = document.createElement("tr");
+                tr.className = "border-b border-slate-700";
+                tr.innerHTML = `
+                    <td class="p-3">${b.booking_code}</td>
+                    <td class="p-3">${b.customer_name}</td>
+                    <td class="p-3">${b.movie_title}</td>
+                    <td class="p-3">${b.created_at}</td>
+                    <td class="p-3">
+                        <span class="px-3 py-1 rounded text-sm
+                        ${b.status === 'confirmed' ? 'bg-emerald-600' : 'bg-slate-600'}">
+                            ${b.status}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+
+        // Ejecutar todo
+        loadStats();
+        loadChart();
+        loadLatestBookings();
+
+    </script>
+
+</body>
+
+</html>

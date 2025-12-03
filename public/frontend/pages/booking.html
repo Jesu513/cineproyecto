@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirmar Reserva – SisCine</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div id="navbar"></div>
+
+    <main class="max-w-5xl mx-auto px-6 pt-28 pb-20">
+
+        <div id="bookingContainer"></div>
+
+    </main>
+
+    <!-- Navbar -->
+    <script type="text/babel" src="../../components/Navbar.jsx"></script>
+    <script type="text/babel">
+        ReactDOM.createRoot(document.getElementById("navbar")).render(<Navbar />);
+    </script>
+
+    <!-- API -->
+    <script src="../utils/api.js"></script>
+
+    <!-- BOOKING PAGE LOGIC -->
+    <script type="text/babel">
+
+        function BookingPage() {
+            const params = new URLSearchParams(window.location.search);
+            const movieId = params.get("movie_id");
+            const showtimeId = params.get("showtime_id");
+
+            const [movie, setMovie] = React.useState(null);
+            const [showtime, setShowtime] = React.useState(null);
+            const [tickets, setTickets] = React.useState(1);
+
+            React.useEffect(() => {
+                loadMovie();
+                loadShowtime();
+            }, []);
+
+            async function loadMovie() {
+                const res = await api.get(`/movies/${movieId}`);
+                setMovie(res.data);
+            }
+
+            async function loadShowtime() {
+                const res = await api.get(`/showtimes/${showtimeId}`);
+                setShowtime(res.data);
+            }
+
+            if (!movie || !showtime) {
+                return <p className="text-center text-slate-400">Cargando...</p>;
+            }
+
+            const finalAmount = showtime.base_price * tickets;
+
+            return (
+                <div className="bg-slate-800 p-8 rounded-xl shadow-xl border border-slate-700">
+
+                    <h1 className="text-3xl font-bold mb-6">Confirmar Reserva</h1>
+
+                    <div className="flex flex-col md:flex-row gap-8">
+
+                        {/* Poster */}
+                        <img
+                            src={movie.poster_url}
+                            alt={movie.title}
+                            className="w-48 rounded-lg shadow-lg"
+                        />
+
+                        {/* Info */}
+                        <div className="flex-1 space-y-4">
+
+                            <h2 className="text-2xl font-bold">{movie.title}</h2>
+
+                            <p className="text-slate-300 text-sm">
+                                {movie.duration} min · {movie.classification}
+                            </p>
+
+                            <div>
+                                <h3 className="text-lg font-semibold">Horario</h3>
+                                <p className="text-slate-300">
+                                    {showtime.show_date} – {showtime.show_time}
+                                </p>
+                                <p className="text-slate-400 text-sm">
+                                    Sala: {showtime.room_name}
+                                </p>
+                            </div>
+
+                            <div>
+                                <h3 className="text-lg font-semibold">Precio base</h3>
+                                <p className="text-slate-300">S/ {showtime.base_price}</p>
+                            </div>
+
+                            <div>
+                                <h3 className="text-lg font-semibold">Cantidad de entradas</h3>
+                                <select
+                                    value={tickets}
+                                    onChange={(e) => setTickets(parseInt(e.target.value))}
+                                    className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg mt-1"
+                                >
+                                    {[1, 2, 3, 4, 5, 6].map(n => (
+                                        <option key={n} value={n}>{n}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="mt-4 text-xl">
+                                <span>Total: </span>
+                                <span className="text-emerald-400 font-bold">S/ {finalAmount}</span>
+                            </div>
+
+                            <a
+                                href={`./seat-selection.html?movie_id=${movieId}&showtime_id=${showtimeId}&tickets=${tickets}`}
+                                className="block w-full text-center mt-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold"
+                            >
+                                Seleccionar Asientos →
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("bookingContainer")).render(<BookingPage />);
+
+    </script>
+
+</body>
+
+</html>

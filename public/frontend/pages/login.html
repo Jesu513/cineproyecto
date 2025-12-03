@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iniciar sesión - SisCine</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div id="navbar"></div>
+
+    <section class="flex justify-center items-center min-h-screen">
+        <div class="bg-slate-800 p-10 rounded-xl shadow-lg w-full max-w-md">
+
+            <h2 class="text-3xl font-bold text-center mb-8">Iniciar sesión</h2>
+
+            <form id="loginForm" class="space-y-5">
+                <div>
+                    <label class="text-sm">Email</label>
+                    <input type="email" name="email" required
+                           class="w-full mt-1 p-3 rounded bg-slate-700 border border-slate-600" />
+                </div>
+
+                <div>
+                    <label class="text-sm">Contraseña</label>
+                    <input type="password" name="password" required
+                           class="w-full mt-1 p-3 rounded bg-slate-700 border border-slate-600" />
+                </div>
+
+                <button type="submit"
+                        class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold">
+                    Entrar
+                </button>
+            </form>
+
+            <p class="text-center text-slate-400 mt-6">
+                ¿No tienes cuenta?
+                <a href="./register.html" class="text-emerald-400">Regístrate aquí</a>
+            </p>
+
+        </div>
+    </section>
+
+    <!-- Login script -->
+    <script src="../../assets/js/auth.js"></script>
+
+    <!-- Navbar -->
+    <script type="text/babel" src="../../components/Navbar.jsx"></script>
+    <script type="text/babel">
+        ReactDOM.createRoot(document.getElementById("navbar")).render(<Navbar />);
+    </script>
+
+</body>
+</html>

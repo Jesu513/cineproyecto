@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SisCine - Bienvenido</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <!-- Navbar -->
+    <div id="navbar"></div>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen pt-24 pb-16 px-6">
+        <!-- Hero Banner -->
+        <div class="max-w-7xl mx-auto text-center mb-16">
+            <h1 class="text-5xl md:text-6xl font-extrabold mb-6">
+                Bienvenido a <span class="text-emerald-400">SisCine</span>
+            </h1>
+
+            <p class="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-8">
+                Reserva tus entradas, elige tus asientos y recibe recomendaciones personalizadas.
+            </p>
+
+            <a href="./movies.html" 
+               class="inline-block px-8 py-4 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-lg font-semibold transition-all transform hover:scale-105">
+                Ver Cartelera Completa 🎬
+            </a>
+        </div>
+
+        <!-- Películas en Cartelera -->
+        <div id="movies-section" class="max-w-7xl mx-auto">
+            <h2 class="text-3xl font-bold mb-8 text-center md:text-left">
+                🎥 En Cartelera
+            </h2>
+            
+            <!-- Loading -->
+            <div id="movies-loading" class="text-center py-12">
+                <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-emerald-400 border-t-transparent"></div>
+                <p class="mt-4 text-slate-400">Cargando películas...</p>
+            </div>
+
+            <!-- Movies Grid -->
+            <div id="movies-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+
+            <!-- Error -->
+            <div id="movies-error" class="hidden text-center py-12">
+                <p class="text-red-400 text-lg">❌ Error al cargar películas</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cargar Navbar.jsx -->
+    <script type="text/babel" src="../components/Navbar.jsx"></script>
+    
+    <!-- Montar Navbar -->
+    <script type="text/babel">
+        ReactDOM.createRoot(document.getElementById("navbar")).render(<Navbar />);
+    </script>
+
+    <!-- Cargar Películas -->
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const MovieCard = ({ movie }) => {
+            const posterUrl = movie.poster_url || 'https://via.placeholder.com/300x450?text=Sin+Poster';
+            const rating = movie.rating ? parseFloat(movie.rating).toFixed(1) : 'N/A';
+
+            return (
+                <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 cursor-pointer">
+                    <div className="relative">
+                        <img 
+                            src={posterUrl} 
+                            alt={movie.title}
+                            className="w-full h-96 object-cover"
+                            onError={(e) => {
+                                e.target.src = 'https://via.placeholder.com/300x450?text=Sin+Poster';
+                            }}
+                        />
+                        
+                        {/* Rating Badge */}
+                        <div className="absolute top-3 right-3 bg-yellow-500 text-slate-900 font-bold px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                            ⭐ {rating}
+                        </div>
+
+                        {/* Classification Badge */}
+                        {movie.classification && (
+                            <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-sm text-white font-bold px-3 py-1 rounded text-xs">
+                                {movie.classification}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-4">
+                        <h3 className="text-lg font-bold mb-2 line-clamp-1 hover:text-emerald-400 transition">
+                            {movie.title}
+                        </h3>
+
+                        <p className="text-slate-400 text-sm mb-3 line-clamp-2">
+                            {movie.synopsis || 'Sin descripción disponible'}
+                        </p>
+
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-slate-500 text-xs">
+                                ⏱️ {movie.duration ? `${movie.duration} min` : 'N/A'}
+                            </span>
+                            <span className="text-slate-500 text-xs">
+                                📅 {movie.release_date ? new Date(movie.release_date).getFullYear() : 'N/A'}
+                            </span>
+                        </div>
+
+                        {/* Genres */}
+                        {movie.genres && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                                {(typeof movie.genres === 'string' ? JSON.parse(movie.genres) : movie.genres)
+                                    .slice(0, 3)
+                                    .map((genre, index) => (
+                                        <span 
+                                            key={index}
+                                            className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded"
+                                        >
+                                            {genre}
+                                        </span>
+                                    ))}
+                            </div>
+                        )}
+
+                        <a 
+                            href={`./movie-detail.html?id=${movie.id}`}
+                            className="block w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded transition"
+                        >
+                            Ver Detalles
+                        </a>
+                    </div>
+                </div>
+            );
+        };
+
+        const MoviesSection = () => {
+            const [movies, setMovies] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(false);
+
+            useEffect(() => {
+                fetchMovies();
+            }, []);
+
+            const fetchMovies = async () => {
+                try {
+                    const response = await fetch('/api/movies?per_page=8&order_by=rating&order_dir=DESC');
+                    const data = await response.json();
+
+                    if (data.success) {
+                        setMovies(data.data);
+                    } else {
+                        setError(true);
+                    }
+                } catch (err) {
+                    console.error('Error fetching movies:', err);
+                    setError(true);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Ocultar loading/error, mostrar grid
+            useEffect(() => {
+                if (!loading) {
+                    document.getElementById('movies-loading').classList.add('hidden');
+                }
+                if (error) {
+                    document.getElementById('movies-error').classList.remove('hidden');
+                }
+            }, [loading, error]);
+
+            if (loading) return null;
+            if (error) return null;
+
+            return (
+                <>
+                    {movies.map(movie => (
+                        <MovieCard key={movie.id} movie={movie} />
+                    ))}
+                </>
+            );
+        };
+
+        // Montar componente de películas
+        ReactDOM.createRoot(document.getElementById("movies-grid")).render(<MoviesSection />);
+    </script>
+
+</body>
+</html>

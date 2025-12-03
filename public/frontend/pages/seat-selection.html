@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Seleccionar Asientos – SisCine</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div id="navbar"></div>
+
+    <main class="max-w-5xl mx-auto px-6 pt-28 pb-20">
+        <div id="seatSelectionContainer"></div>
+    </main>
+
+    <!-- Components -->
+    <script type="text/babel" src="../../components/Navbar.jsx"></script>
+    <script type="text/babel" src="../../components/SeatMap.jsx"></script>
+
+    <!-- API -->
+    <script src="../utils/api.js"></script>
+
+    <!-- Render Navbar -->
+    <script type="text/babel">
+        ReactDOM.createRoot(document.getElementById("navbar")).render(<Navbar />);
+    </script>
+
+    <!-- SEAT SELECTION PAGE -->
+    <script type="text/babel">
+
+        function SeatSelectionPage() {
+            const params = new URLSearchParams(window.location.search);
+            const movieId = params.get("movie_id");
+            const showtimeId = params.get("showtime_id");
+            const maxSeats = parseInt(params.get("tickets") || "1");
+
+            const [showtime, setShowtime] = React.useState(null);
+            const [movie, setMovie] = React.useState(null);
+            const [map, setMap] = React.useState([]);
+            const [selected, setSelected] = React.useState([]);
+
+            React.useEffect(() => {
+                loadMovie();
+                loadShowtime();
+                loadSeatMap();
+            }, []);
+
+            async function loadMovie() {
+                const res = await api.get(`/movies/${movieId}`);
+                setMovie(res.data);
+            }
+
+            async function loadShowtime() {
+                const res = await api.get(`/showtimes/${showtimeId}`);
+                setShowtime(res.data);
+            }
+
+            async function loadSeatMap() {
+                const res = await api.get(`/showtimes/${showtimeId}/seats`);
+                setMap(res.data);
+            }
+
+            function toggleSeat(seat) {
+                if (seat.status !== "available") return;
+
+                // Si ya está seleccionado → quitarlo
+                if (selected.find(s => s.id === seat.id)) {
+                    setSelected(prev => prev.filter(s => s.id !== seat.id));
+                    return;
+                }
+
+                // Si ya alcanzó el máximo
+                if (selected.length >= maxSeats) {
+                    alert(`Solo puedes seleccionar ${maxSeats} asiento(s).`);
+                    return;
+                }
+
+                setSelected(prev => [...prev, seat]);
+            }
+
+            function goToPayment() {
+                if (selected.length !== maxSeats) {
+                    alert(`Debes seleccionar exactamente ${maxSeats} asiento(s).`);
+                    return;
+                }
+
+                const seatIds = selected.map(s => s.id).join(",");
+
+                window.location.href =
+                    `./payment.html?movie_id=${movieId}&showtime_id=${showtimeId}&seats=${seatIds}`;
+            }
+
+            if (!movie || !showtime) {
+                return <p className="text-center text-slate-400">Cargando función...</p>;
+            }
+
+            return (
+                <div className="space-y-10">
+
+                    <h1 className="text-3xl font-bold">Selecciona tus asientos</h1>
+
+                    {/* Información de función */}
+                    <div className="bg-slate-800 p-6 rounded-lg border border-slate-700 mb-6">
+                        <h2 className="text-2xl font-semibold mb-2">{movie.title}</h2>
+                        <p className="text-slate-300">
+                            {showtime.show_date} – {showtime.show_time}
+                        </p>
+                        <p className="text-slate-400 text-sm">Sala: {showtime.room_name}</p>
+                    </div>
+
+                    {/* MAPA DE ASIENTOS */}
+                    <SeatMap seats={map} selectedSeats={selected} onSeatClick={toggleSeat} />
+
+                    {/* Botón CONTINUAR */}
+                    <div className="text-right">
+                        <button
+                            onClick={goToPayment}
+                            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold"
+                        >
+                            Continuar al Pago →
+                        </button>
+                    </div>
+
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("seatSelectionContainer"))
+            .render(<SeatSelectionPage />);
+
+    </script>
+
+</body>
+
+</html>

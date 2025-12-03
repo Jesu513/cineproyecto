@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mis Reservas – SisCine</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <!-- Navbar -->
+    <div id="navbar"></div>
+
+    <main class="max-w-6xl mx-auto px-6 pt-28 pb-20">
+        <div id="bookingsContainer"></div>
+    </main>
+
+    <!-- Navbar -->
+    <script type="text/babel" src="../../components/Navbar.jsx"></script>
+    <script type="text/babel">
+        ReactDOM.createRoot(document.getElementById("navbar")).render(<Navbar />);
+    </script>
+
+    <!-- API -->
+    <script src="../utils/api.js"></script>
+
+    <!-- PAGE LOGIC -->
+    <script type="text/babel">
+
+        function MyBookingsPage() {
+            const [bookings, setBookings] = React.useState([]);
+
+            React.useEffect(() => {
+                loadBookings();
+            }, []);
+
+            async function loadBookings() {
+                try {
+                    const res = await api.get("/bookings/my-bookings");
+                    setBookings(res.data);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
+            if (bookings.length === 0) {
+                return (
+                    <p className="text-center text-slate-400 text-lg">
+                        No tienes reservas todavía.
+                    </p>
+                );
+            }
+
+            return (
+                <div className="space-y-6">
+
+                    <h1 className="text-3xl font-bold mb-8">Mis Reservas</h1>
+
+                    {bookings.map(b => {
+
+                        const statusColor = {
+                            confirmed: "text-emerald-400",
+                            pending: "text-yellow-400",
+                            cancelled: "text-red-500",
+                            expired: "text-red-500",
+                            completed: "text-blue-400"
+                        }[b.status] || "text-slate-300";
+
+                        return (
+                            <div key={b.id}
+                                className="bg-slate-800 p-6 rounded-lg border border-slate-700 shadow-md">
+
+                                <div className="flex flex-col md:flex-row justify-between">
+                                    
+                                    {/* INFO PRINCIPAL */}
+                                    <div>
+                                        <h2 className="text-2xl font-bold">{b.movie_title}</h2>
+                                        <p className="text-slate-300">
+                                            {b.show_date} – {b.show_time}
+                                        </p>
+                                        <p className="text-slate-400 text-sm">
+                                            Sala: {b.room_name}
+                                        </p>
+                                        <p className={`mt-2 font-bold ${statusColor}`}>
+                                            Estado: {b.status.toUpperCase()}
+                                        </p>
+                                    </div>
+
+                                    {/* CÓDIGO + MONTO */}
+                                    <div className="text-right mt-4 md:mt-0">
+                                        <p className="text-sm text-slate-400">Código de reserva:</p>
+                                        <p className="font-mono text-lg">{b.booking_code}</p>
+
+                                        <p className="mt-3 text-slate-300">
+                                            Total Pagado:
+                                            <span className="text-emerald-400 font-semibold">
+                                                {" "}S/ {b.final_amount}
+                                            </span>
+                                        </p>
+                                    </div>
+
+                                </div>
+
+                                {/* ASIENTOS */}
+                                <div className="mt-4">
+                                    <h3 className="font-semibold mb-1">Asientos:</h3>
+                                    <p className="text-slate-300">
+                                        {b.seats.map(s => `${s.row_label}${s.seat_number}`).join(", ")}
+                                    </p>
+                                </div>
+
+                                {/* ACCIONES */}
+                                <div className="mt-6 flex gap-4">
+
+                                    <a href={`/storage/tickets/${b.booking_code}.pdf`}
+                                        target="_blank"
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm">
+                                        Ver Ticket PDF
+                                    </a>
+
+                                    {b.status === "confirmed" && (
+                                        <button
+                                            onclick={() => cancelBooking(b.id)}
+                                            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white text-sm">
+                                            Cancelar Reserva
+                                        </button>
+                                    )}
+
+                                </div>
+
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("bookingsContainer"))
+            .render(<MyBookingsPage />);
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,106 @@
+/* ============================================================
+   ADMIN.CSS — Panel administrativo y Staff
+   ============================================================ */
+
+body {
+    background: #111;
+    color: #f0f0f0;
+    font-family: 'Inter', sans-serif;
+}
+
+/* ------------------------------------
+   SIDEBAR
+--------------------------------------- */
+
+.admin-sidebar {
+    width: 240px;
+    height: 100vh;
+    background: #0b0b0b;
+    border-right: 1px solid #1f1f1f;
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding-top: 20px;
+}
+
+.admin-sidebar a {
+    display: block;
+    padding: 12px 20px;
+    color: #ddd;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+.admin-sidebar a:hover,
+.admin-sidebar a.active {
+    background: #007c91;
+    color: white;
+}
+
+/* Layout principal */
+.admin-content {
+    margin-left: 260px;
+    padding: 30px;
+}
+
+/* ------------------------------------
+   CARDS DE ESTADÍSTICAS
+--------------------------------------- */
+
+.admin-card {
+    background: #1a1a1a;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #222;
+    transition: 0.2s;
+}
+
+.admin-card:hover {
+    background: #222;
+}
+
+/* ------------------------------------
+   TABLAS ADMIN
+--------------------------------------- */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.admin-table th {
+    background: #0f3c4c;
+    padding: 12px;
+}
+
+.admin-table td {
+    padding: 12px;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.admin-table tr:hover {
+    background: #1f1f1f;
+}
+
+/* ------------------------------------
+   BOTONES ADMIN
+--------------------------------------- */
+
+.btn-admin {
+    background: #0097a7;
+    padding: 8px 14px;
+    border-radius: 6px;
+    color: white;
+}
+
+.btn-admin:hover {
+    background: #007c91;
+}
+
+.btn-admin-danger {
+    background: #b71c1c;
+}
+
+.btn-admin-danger:hover {
+    background: #9a1212;
+}

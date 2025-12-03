@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Películas</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div class="flex">
+
+        <!-- SIDEBAR -->
+        <div id="adminSidebar" class="w-64"></div>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 p-10">
+
+            <h1 class="text-4xl font-bold mb-8">🎬 Gestión de Películas</h1>
+
+            <!-- ACCIONES SUPERIORES -->
+            <div class="flex items-center justify-between mb-6">
+
+                <!-- Buscador -->
+                <input id="searchInput" placeholder="Buscar película..."
+                    class="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg w-72" />
+
+                <div class="flex gap-3">
+                    <!-- Filtro -->
+                    <select id="filterStatus" class="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg">
+                        <option value="">Todas</option>
+                        <option value="1">Activas</option>
+                        <option value="0">Inactivas</option>
+                    </select>
+
+                    <!-- Botón agregar -->
+                    <button id="btnAddMovie"
+                        class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg font-semibold">
+                        + Agregar Película
+                    </button>
+                </div>
+            </div>
+
+            <!-- TABLA -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-slate-700 text-left">
+                            <th class="p-3">Poster</th>
+                            <th class="p-3">Título</th>
+                            <th class="p-3">Duración</th>
+                            <th class="p-3">Rating</th>
+                            <th class="p-3">Estado</th>
+                            <th class="p-3">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="moviesTable"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+
+    <!-- COMPONENTS -->
+    <script type="text/babel" src="../../components/AdminSidebar.jsx"></script>
+    <script type="text/babel" src="../../components/Modal.jsx"></script>
+
+    <!-- API -->
+    <script src="../../utils/api.js"></script>
+
+    <!-- PAGE LOGIC -->
+    <script type="text/babel">
+
+        // ========================================
+        // 1. Cargar Sidebar
+        // ========================================
+        ReactDOM.createRoot(document.getElementById("adminSidebar"))
+            .render(<AdminSidebar active="movies" />);
+
+
+        // ========================================
+        // 2. VARIABLES GLOBALES
+        // ========================================
+        let movieList = [];
+        let editingMovie = null;
+
+
+        // ========================================
+        // 3. Cargar películas
+        // ========================================
+        async function loadMovies() {
+            const res = await api.get("/admin/movies");
+            movieList = res.data;
+
+            redrawTable();
+        }
+
+
+        // ========================================
+        // 4. Redibujar tabla
+        // ========================================
+        function redrawTable() {
+
+            const table = document.getElementById("moviesTable");
+            table.innerHTML = "";
+
+            const search = document.getElementById("searchInput").value.toLowerCase();
+            const statusFilter = document.getElementById("filterStatus").value;
+
+            movieList
+                .filter(m => m.title.toLowerCase().includes(search))
+                .filter(m => statusFilter === "" || String(m.is_active) === statusFilter)
+                .forEach(movie => {
+
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b border-slate-700";
+
+                    tr.innerHTML = `
+                        <td class="p-3">
+                            <img src="${movie.poster_url}" class="w-16 h-24 object-cover rounded" />
+                        </td>
+
+                        <td class="p-3 font-semibold">${movie.title}</td>
+
+                        <td class="p-3">${movie.duration} min</td>
+
+                        <td class="p-3">⭐ ${movie.rating}</td>
+
+                        <td class="p-3">
+                            <span class="px-3 py-1 rounded text-sm 
+                                ${movie.is_active ? "bg-emerald-600" : "bg-red-600"}">
+                                ${movie.is_active ? "Activa" : "Inactiva"}
+                            </span>
+                        </td>
+
+                        <td class="p-3">
+                            <button class="text-emerald-400 hover:text-emerald-300 mr-3"
+                                    onclick="editMovie(${movie.id})">
+                                Editar
+                            </button>
+
+                            <button class="text-red-400 hover:text-red-300"
+                                    onclick="toggleMovie(${movie.id}, ${movie.is_active})">
+                                ${movie.is_active ? "Desactivar" : "Activar"}
+                            </button>
+                        </td>
+                    `;
+
+                    table.appendChild(tr);
+                });
+        }
+
+
+        // ========================================
+        // 5. Abrir modal para agregar
+        // ========================================
+        document.getElementById("btnAddMovie").onclick = () => {
+            editingMovie = null;
+            openMovieModal();
+        };
+
+
+        // ========================================
+        // 6. Editar película
+        // ========================================
+        async function editMovie(id) {
+            editingMovie = movieList.find(m => m.id === id);
+            openMovieModal(editingMovie);
+        }
+
+
+        // ========================================
+        // 7. Activar / desactivar película
+        // ========================================
+        async function toggleMovie(id, current) {
+            const res = await api.patch(`/admin/movies/${id}/status`, {
+                is_active: !current
+            });
+            loadMovies();
+        }
+
+        // ========================================
+        // 8. Crear Modal con React
+        // ========================================
+        function openMovieModal(movie = null) {
+
+            const modalFields = (
+                <div className="space-y-3">
+
+                    <input id="mv_title" defaultValue={movie?.title || ""}
+                           placeholder="Título"
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <input id="mv_duration" defaultValue={movie?.duration || ""}
+                           placeholder="Duración en minutos"
+                           type="number"
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <input id="mv_rating" defaultValue={movie?.rating || ""}
+                           placeholder="Rating"
+                           type="number" step="0.1"
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <textarea id="mv_synopsis"
+                              placeholder="Sinopsis..."
+                              className="w-full p-2 bg-slate-800 border border-slate-700 rounded h-28">
+                        {movie?.synopsis || ""}
+                    </textarea>
+
+                </div>
+            );
+            const onConfirm = async () => {
+                const payload = {
+                    title: document.getElementById("mv_title").value,
+                    duration: document.getElementById("mv_duration").value,
+                    rating: document.getElementById("mv_rating").value,
+                    synopsis: document.getElementById("mv_synopsis").value
+                };
+                if (editingMovie) {
+                    await api.put(`/admin/movies/${editingMovie.id}`, payload);
+                } else {
+                    await api.post(`/admin/movies`, payload);
+                }
+                loadMovies();
+            };
+            Modal.show({
+                title: movie ? "Editar película" : "Agregar Película",
+                content: modalFields,
+                confirmText: "Guardar",
+                onConfirm
+            });
+        }
+        // ========================================
+        // 9. Eventos de búsqueda/filtro
+        // ========================================
+        document.getElementById("searchInput").onkeyup = redrawTable;
+        document.getElementById("filterStatus").onchange = redrawTable;
+        // ========================================
+        // 10. Iniciar carga inicial
+        // ========================================
+        loadMovies();
+    </script>
+
+</body>
+
+</html>

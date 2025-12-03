@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staff – Validar Reserva</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div class="flex">
+
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-slate-800 h-screen p-5 space-y-6 border-r border-slate-700">
+            <h2 class="text-2xl font-bold mb-4">🎫 Staff</h2>
+
+            <nav class="space-y-3">
+                <a href="dashboard.html" class="block px-3 py-2 rounded hover:bg-slate-700">📊 Dashboard</a>
+                <a href="validate-booking.html" class="block px-3 py-2 rounded bg-sky-600 text-white font-semibold">🔍 Validar Reservas</a>
+                <a href="manual-booking.html" class="block px-3 py-2 rounded hover:bg-slate-700">📝 Reserva Manual</a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 p-10 space-y-10">
+
+            <h1 class="text-4xl font-bold mb-6">🔍 Validación de Reserva</h1>
+
+            <!-- BUSCADOR -->
+            <div class="bg-slate-800 p-6 border border-slate-700 rounded-xl">
+                <label class="block mb-2 text-slate-300">Código de reserva</label>
+                <div class="flex gap-4">
+                    <input id="bookingCode" type="text"
+                           placeholder="Ejemplo: ABC12345"
+                           class="flex-1 p-3 bg-slate-700 rounded border border-slate-600" />
+
+                    <button onclick="searchBooking()"
+                            class="px-6 py-3 bg-sky-600 hover:bg-sky-500 rounded-lg">
+                        Buscar
+                    </button>
+                </div>
+            </div>
+
+            <!-- RESULTADOS -->
+            <div id="resultSection" class="hidden bg-slate-800 p-6 border border-slate-700 rounded-xl">
+                <h2 class="text-2xl font-bold mb-4">🎫 Detalles de la Reserva</h2>
+
+                <div id="bookingDetails" class="space-y-4"></div>
+
+                <div class="flex gap-4 mt-6">
+                    <button id="btnConfirmCash"
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded hidden">
+                        Confirmar Pago (Efectivo)
+                    </button>
+
+                    <button id="btnChangeSeat"
+                            class="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded hidden">
+                        Cambiar Asiento
+                    </button>
+
+                    <button id="btnCancelBooking"
+                            class="px-4 py-2 bg-red-600 hover:bg-red-500 rounded hidden">
+                        Cancelar Reserva
+                    </button>
+
+                    <button id="btnPrintTicket"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded hidden">
+                        Imprimir Ticket
+                    </button>
+                </div>
+
+                <!-- SECCIÓN CAMBIO DE ASIENTO -->
+                <div id="seatSelectionSection" class="hidden mt-8">
+                    <h3 class="text-xl font-semibold mb-3">🎟️ Cambiar Asiento</h3>
+                    <div id="seatMapContainer" class="grid grid-cols-10 gap-2"></div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="../../utils/api.js"></script>
+
+    <script>
+
+        let currentBooking = null;
+
+        // ================================
+        // 1. Buscar reserva por código
+        // ================================
+        async function searchBooking() {
+            const code = document.getElementById("bookingCode").value.trim();
+
+            if (code === "") {
+                alert("Ingrese un código.");
+                return;
+            }
+
+            try {
+                const res = await api.get(`/staff/booking/${code}`);
+                currentBooking = res.data;
+                displayBookingDetails(currentBooking);
+            } catch (e) {
+                alert("Reserva no encontrada.");
+            }
+        }
+
+        // ================================
+        // 2. Mostrar datos de la reserva
+        // ================================
+        function displayBookingDetails(b) {
+
+            document.getElementById("resultSection").classList.remove("hidden");
+
+            const html = `
+                <p><span class="font-semibold">Código:</span> ${b.booking_code}</p>
+                <p><span class="font-semibold">Cliente:</span> ${b.customer_name}</p>
+                <p><span class="font-semibold">Película:</span> ${b.movie_title}</p>
+                <p><span class="font-semibold">Sala:</span> ${b.room_name}</p>
+                <p><span class="font-semibold">Horario:</span> ${b.show_date} - ${b.show_time}</p>
+                <p><span class="font-semibold">Asientos:</span> ${b.seats.join(", ")}</p>
+                <p><span class="font-semibold">Estado:</span> 
+                    <span class="font-bold ${b.status === "confirmed" ? "text-emerald-400" : "text-yellow-400"}">
+                        ${b.status}
+                    </span>
+                </p>
+                <p><span class="font-semibold">Pago:</span> ${b.payment_status}</p>
+            `;
+
+            document.getElementById("bookingDetails").innerHTML = html;
+
+            // Mostrar botones según estado
+            document.getElementById("btnConfirmCash").classList.toggle("hidden", b.payment_status === "completed");
+            document.getElementById("btnChangeSeat").classList.toggle("hidden", b.status !== "confirmed");
+            document.getElementById("btnCancelBooking").classList.remove("hidden");
+            document.getElementById("btnPrintTicket").classList.remove("hidden");
+
+            // Asignar acciones
+            document.getElementById("btnConfirmCash").onclick = confirmCashPayment;
+            document.getElementById("btnCancelBooking").onclick = cancelBooking;
+            document.getElementById("btnPrintTicket").onclick = printTicket;
+            document.getElementById("btnChangeSeat").onclick = showSeatChangeMap;
+        }
+
+        // ================================
+        // 3. Confirmar pago (efectivo)
+        // ================================
+        async function confirmCashPayment() {
+            await api.post(`/staff/booking/${currentBooking.id}/confirm-cash`);
+            alert("Pago confirmado.");
+            searchBooking();
+        }
+
+        // ================================
+        // 4. Cancelar reserva
+        // ================================
+        async function cancelBooking() {
+            if (!confirm("¿Cancelar esta reserva?")) return;
+
+            await api.post(`/staff/booking/${currentBooking.id}/cancel`);
+            alert("Reserva cancelada.");
+            searchBooking();
+        }
+
+        // ================================
+        // 5. Imprimir ticket
+        // ================================
+        function printTicket() {
+            window.open(`/api/staff/booking/${currentBooking.id}/ticket`, "_blank");
+        }
+
+        // ================================
+        // 6. Mostrar mapa de asientos
+        // ================================
+        async function showSeatChangeMap() {
+            document.getElementById("seatSelectionSection").classList.remove("hidden");
+
+            const res = await api.get(`/staff/showtimes/${currentBooking.showtime_id}/seats`);
+            const seats = res.data;
+
+            const container = document.getElementById("seatMapContainer");
+            container.innerHTML = "";
+
+            seats.forEach(seat => {
+                const btn = document.createElement("button");
+
+                btn.textContent = seat.row_label + seat.seat_number;
+                btn.className = `
+                    p-2 rounded text-sm 
+                    ${seat.status === "occupied" ? "bg-red-600 cursor-not-allowed" :
+                       "bg-slate-700 hover:bg-sky-600"} 
+                `;
+
+                btn.disabled = seat.status === "occupied";
+
+                btn.onclick = () => changeSeat(seat.id);
+
+                container.appendChild(btn);
+            });
+        }
+
+        // ================================
+        // 7. Cambiar asiento
+        // ================================
+        async function changeSeat(seatId) {
+            await api.post(`/staff/booking/${currentBooking.id}/change-seat`, {
+                seat_id: seatId
+            });
+
+            alert("Asiento cambiado correctamente.");
+            searchBooking();
+        }
+
+    </script>
+
+</body>
+</html>

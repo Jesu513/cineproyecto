@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Funciones</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div class="flex">
+
+        <!-- SIDEBAR -->
+        <div id="adminSidebar" class="w-64"></div>
+
+        <!-- MAIN -->
+        <main class="flex-1 p-10">
+
+            <h1 class="text-4xl font-bold mb-8">🎭 Gestión de Funciones</h1>
+
+            <!-- ACCIONES SUPERIORES -->
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+
+                <div class="flex gap-3 flex-wrap">
+                    <!-- Filtro por película -->
+                    <select id="filterMovie"
+                            class="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg">
+                        <option value="">Todas las películas</option>
+                    </select>
+
+                    <!-- Filtro por estado -->
+                    <select id="filterStatus"
+                            class="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg">
+                        <option value="">Todas</option>
+                        <option value="1">Activas</option>
+                        <option value="0">Inactivas</option>
+                    </select>
+                </div>
+
+                <!-- Botón agregar -->
+                <button id="btnAddShowtime"
+                        class="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg font-semibold">
+                    + Programar Función
+                </button>
+            </div>
+
+            <!-- TABLA -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-slate-700 text-left">
+                            <th class="p-3">Película</th>
+                            <th class="p-3">Sala</th>
+                            <th class="p-3">Fecha</th>
+                            <th class="p-3">Hora</th>
+                            <th class="p-3">Precio base</th>
+                            <th class="p-3">Estado</th>
+                            <th class="p-3">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="showtimesTable"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- COMPONENTES -->
+    <script type="text/babel" src="../../components/AdminSidebar.jsx"></script>
+    <script type="text/babel" src="../../components/Modal.jsx"></script>
+
+    <!-- API -->
+    <script src="../../utils/api.js"></script>
+
+    <!-- LÓGICA DE PÁGINA -->
+    <script type="text/babel">
+        // ============ 1. Sidebar ============
+        ReactDOM.createRoot(document.getElementById("adminSidebar"))
+            .render(<AdminSidebar active="showtimes" />);
+
+        // ============ 2. Variables globales ============
+        let showtimesList = [];
+        let moviesOptions = [];
+        let roomsOptions = [];
+        let editingShowtime = null;
+
+        // ============ 3. Cargar opciones (películas y salas) ============
+        async function loadOptions() {
+            try {
+                const [moviesRes, roomsRes] = await Promise.all([
+                    api.get("/admin/movies?status=active"),
+                    api.get("/admin/rooms?status=active")
+                ]);
+
+                moviesOptions = moviesRes.data || [];
+                roomsOptions = roomsRes.data || [];
+
+                // Poblar filtro de película
+                const filterMovie = document.getElementById("filterMovie");
+                moviesOptions.forEach(m => {
+                    const opt = document.createElement("option");
+                    opt.value = m.id;
+                    opt.textContent = m.title;
+                    filterMovie.appendChild(opt);
+                });
+
+            } catch (err) {
+                console.error("Error cargando opciones", err);
+            }
+        }
+
+        // ============ 4. Cargar funciones ============
+        async function loadShowtimes() {
+            try {
+                const res = await api.get("/admin/showtimes");
+                showtimesList = res.data || [];
+                redrawTable();
+            } catch (err) {
+                console.error("Error cargando funciones", err);
+            }
+        }
+
+        // ============ 5. Redibujar tabla ============
+        function redrawTable() {
+            const tbody = document.getElementById("showtimesTable");
+            tbody.innerHTML = "";
+
+            const movieFilter = document.getElementById("filterMovie").value;
+            const statusFilter = document.getElementById("filterStatus").value;
+
+            showtimesList
+                .filter(st => movieFilter === "" || String(st.movie_id) === movieFilter)
+                .filter(st => statusFilter === "" || String(st.is_active) === statusFilter)
+                .forEach(st => {
+
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b border-slate-700";
+
+                    const statusBadge = st.is_active
+                        ? '<span class="px-3 py-1 rounded text-sm bg-emerald-600">Activa</span>'
+                        : '<span class="px-3 py-1 rounded text-sm bg-red-600">Inactiva</span>';
+
+                    tr.innerHTML = `
+                        <td class="p-3">${st.movie_title}</td>
+                        <td class="p-3">${st.room_name}</td>
+                        <td class="p-3">${st.show_date}</td>
+                        <td class="p-3">${st.show_time}</td>
+                        <td class="p-3">S/ ${st.base_price}</td>
+                        <td class="p-3">${statusBadge}</td>
+                        <td class="p-3">
+                            <button class="text-emerald-400 hover:text-emerald-300 mr-3"
+                                    onclick="editShowtime(${st.id})">
+                                Editar
+                            </button>
+                            <button class="text-red-400 hover:text-red-300"
+                                    onclick="toggleShowtime(${st.id}, ${st.is_active})">
+                                ${st.is_active ? "Desactivar" : "Activar"}
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+        }
+
+        // ============ 6. Abrir modal para crear ============
+        document.getElementById("btnAddShowtime").onclick = () => {
+            editingShowtime = null;
+            openShowtimeModal();
+        };
+
+        // ============ 7. Editar función ============
+        function editShowtime(id) {
+            editingShowtime = showtimesList.find(st => st.id === id) || null;
+            openShowtimeModal(editingShowtime);
+        }
+
+        // ============ 8. Activar / desactivar ============
+        async function toggleShowtime(id, current) {
+            try {
+                await api.patch(`/admin/showtimes/${id}/status`, {
+                    is_active: !current
+                });
+                await loadShowtimes();
+            } catch (err) {
+                console.error("Error cambiando estado de función", err);
+            }
+        }
+
+        // Exponer edit/toggle al scope global
+        window.editShowtime = editShowtime;
+        window.toggleShowtime = toggleShowtime;
+
+        // ============ 9. Modal de crear/editar función ============
+        function openShowtimeModal(showtime = null) {
+
+            const modalContent = (
+                <div className="space-y-4">
+
+                    {/* Película */}
+                    <div>
+                        <label className="text-sm block mb-1">Película</label>
+                        <select
+                            id="st_movie_id"
+                            defaultValue={showtime?.movie_id || ""}
+                            className="w-full p-2 bg-slate-800 border border-slate-700 rounded"
+                        >
+                            <option value="">Seleccione una película</option>
+                            {moviesOptions.map(m => (
+                                <option key={m.id} value={m.id}>{m.title}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Sala */}
+                    <div>
+                        <label className="text-sm block mb-1">Sala</label>
+                        <select
+                            id="st_room_id"
+                            defaultValue={showtime?.room_id || ""}
+                            className="w-full p-2 bg-slate-800 border border-slate-700 rounded"
+                        >
+                            <option value="">Seleccione una sala</option>
+                            {roomsOptions.map(r => (
+                                <option key={r.id} value={r.id}>{r.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Fecha */}
+                    <div>
+                        <label className="text-sm block mb-1">Fecha</label>
+                        <input
+                            type="date"
+                            id="st_show_date"
+                            defaultValue={showtime?.show_date || ""}
+                            className="w-full p-2 bg-slate-800 border border-slate-700 rounded"
+                        />
+                    </div>
+
+                    {/* Hora */}
+                    <div>
+                        <label className="text-sm block mb-1">Hora</label>
+                        <input
+                            type="time"
+                            id="st_show_time"
+                            defaultValue={showtime?.show_time || ""}
+                            className="w-full p-2 bg-slate-800 border border-slate-700 rounded"
+                        />
+                    </div>
+
+                    {/* Precio base */}
+                    <div>
+                        <label className="text-sm block mb-1">Precio base (S/)</label>
+                        <input
+                            type="number"
+                            step="0.10"
+                            id="st_base_price"
+                            defaultValue={showtime?.base_price || ""}
+                            className="w-full p-2 bg-slate-800 border border-slate-700 rounded"
+                        />
+                    </div>
+
+                    {/* Estado */}
+                    <div className="flex items-center gap-2 mt-2">
+                        <input
+                            type="checkbox"
+                            id="st_is_active"
+                            defaultChecked={showtime?.is_active ?? true}
+                        />
+                        <label className="text-sm">Función activa</label>
+                    </div>
+                </div>
+            );
+
+            const onConfirm = async () => {
+                const payload = {
+                    movie_id: parseInt(document.getElementById("st_movie_id").value),
+                    room_id: parseInt(document.getElementById("st_room_id").value),
+                    show_date: document.getElementById("st_show_date").value,
+                    show_time: document.getElementById("st_show_time").value,
+                    base_price: parseFloat(document.getElementById("st_base_price").value),
+                    is_active: document.getElementById("st_is_active").checked,
+                };
+
+                if (!payload.movie_id || !payload.room_id || !payload.show_date || !payload.show_time) {
+                    alert("Completa todos los campos obligatorios.");
+                    return;
+                }
+
+                try {
+                    if (editingShowtime) {
+                        await api.put(`/admin/showtimes/${editingShowtime.id}`, payload);
+                    } else {
+                        await api.post("/admin/showtimes", payload);
+                    }
+
+                    await loadShowtimes();
+                } catch (err) {
+                    console.error("Error guardando función", err);
+                    alert("Error al guardar la función.");
+                }
+            };
+
+            Modal.show({
+                title: showtime ? "Editar función" : "Programar nueva función",
+                content: modalContent,
+                confirmText: "Guardar",
+                onConfirm
+            });
+        }
+
+        // ============ 10. Filtros ============
+        document.getElementById("filterMovie").onchange = redrawTable;
+        docu

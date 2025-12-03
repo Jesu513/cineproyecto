@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cartelera – SisCine</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Font Awesome -->
+    <script src="https://kit.fontawesome.com/a2e0e6ad65.js" crossorigin="anonymous"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <!-- Navbar -->
+    <div id="navbar"></div>
+
+    <main class="max-w-7xl mx-auto px-6 pt-28 pb-10">
+
+        <h1 class="text-4xl font-bold mb-6">🎬 Cartelera</h1>
+
+        <!-- Filtros -->
+        <div class="flex flex-wrap gap-4 mb-8">
+            <input id="searchInput" placeholder="Buscar película..."
+                class="px-4 py-2 bg-slate-800 text-white rounded-lg border border-slate-700 w-full sm:w-72" />
+
+            <select id="genreFilter"
+                class="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700">
+                <option value="">Todos los géneros</option>
+            </select>
+
+            <select id="ratingFilter"
+                class="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700">
+                <option value="">Rating</option>
+                <option value="7">7+</option>
+                <option value="8">8+</option>
+                <option value="9">9+</option>
+            </select>
+        </div>
+
+        <!-- GRID DE PELÍCULAS -->
+        <div id="movieGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"></div>
+
+    </main>
+
+    <!-- Helpers -->
+    <script src="../utils/helpers.js"></script>
+
+    <!-- API -->
+    <script src="../utils/api.js"></script>
+
+    <!-- Components -->
+    <script type="text/babel" src="../../components/MovieCard.jsx"></script>
+    <script type="text/babel" src="../../components/Navbar.jsx"></script>
+
+    <!-- Montar Navbar -->
+    <script type="text/babel">
+        ReactDOM.createRoot(document.getElementById("navbar")).render(<Navbar />);
+    </script>
+
+    <!-- Página -->
+    <script type="text/babel">
+        async function loadMovies() {
+            try {
+                // CORRECTO: usando api.getMovies
+                const response = await api.getMovies({ status: "active" });
+
+                const movies = response.data || [];
+                const container = document.getElementById("movieGrid");
+                container.innerHTML = "";
+
+                movies.forEach(movie => {
+                    const div = document.createElement("div");
+
+                    ReactDOM.createRoot(div).render(
+                        <MovieCard
+                            movie={movie}
+                            onClick={() =>
+                                window.location.href = `movie-detail.html?id=${movie.id}`
+                            }
+                        />
+                    );
+
+                    container.appendChild(div);
+                });
+
+            } catch (err) {
+                console.error("Error al cargar películas:", err);
+            }
+        }
+
+        loadMovies();
+    </script>
+
+</body>
+
+</html>

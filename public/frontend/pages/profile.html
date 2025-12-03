@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mi Perfil – SisCine</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div id="navbar"></div>
+
+    <main class="max-w-5xl mx-auto px-6 pt-28 pb-20">
+        <div id="profileContainer"></div>
+    </main>
+
+    <!-- Navbar -->
+    <script type="text/babel" src="../../components/Navbar.jsx"></script>
+    <script type="text/babel">
+        ReactDOM.createRoot(document.getElementById("navbar")).render(<Navbar />);
+    </script>
+
+    <!-- API helper -->
+    <script src="../utils/api.js"></script>
+    <script src="../utils/auth.js"></script>
+
+    <!-- PROFILE PAGE -->
+    <script type="text/babel">
+
+        function ProfilePage() {
+            const [user, setUser] = React.useState(null);
+            const [loading, setLoading] = React.useState(true);
+            const [message, setMessage] = React.useState("");
+
+            const [form, setForm] = React.useState({
+                name: "",
+                phone: "",
+                birth_date: ""
+            });
+
+            const [passwordForm, setPasswordForm] = React.useState({
+                current: "",
+                new: "",
+                confirm: ""
+            });
+
+            const [preferences, setPreferences] = React.useState({
+                favorite_genres: [],
+                notification_email: true,
+                notification_promotions: true,
+                notification_reminders: true,
+            });
+
+            React.useEffect(() => {
+                loadProfile();
+            }, []);
+
+            async function loadProfile() {
+                const res = await api.get("/user/me");
+                setUser(res.data);
+                setForm({
+                    name: res.data.name || "",
+                    phone: res.data.phone || "",
+                    birth_date: res.data.birth_date || ""
+                });
+
+                setPreferences({
+                    favorite_genres: res.data.preferences?.favorite_genres || [],
+                    notification_email: res.data.preferences?.notification_email ?? true,
+                    notification_promotions: res.data.preferences?.notification_promotions ?? true,
+                    notification_reminders: res.data.preferences?.notification_reminders ?? true
+                });
+
+                setLoading(false);
+            }
+
+            async function saveProfile() {
+                const res = await api.put("/user/update", form);
+                setMessage("Datos actualizados correctamente.");
+            }
+
+            async function changePassword() {
+                if (passwordForm.new !== passwordForm.confirm) {
+                    alert("Las contraseñas no coinciden.");
+                    return;
+                }
+
+                await api.put("/user/change-password", {
+                    current_password: passwordForm.current,
+                    new_password: passwordForm.new
+                });
+
+                alert("Contraseña actualizada.");
+                setPasswordForm({ current: "", new: "", confirm: "" });
+            }
+
+            async function savePreferences() {
+                await api.put("/user/preferences", preferences);
+                alert("Preferencias guardadas.");
+            }
+
+            if (loading) {
+                return <p className="text-center text-slate-400">Cargando perfil...</p>;
+            }
+
+            return (
+                <div className="space-y-10">
+
+                    <h1 className="text-3xl font-bold">Mi Perfil</h1>
+
+                    {message && (
+                        <div className="bg-emerald-700 text-white px-4 py-2 rounded-lg">
+                            {message}
+                        </div>
+                    )}
+
+                    {/* DATOS PERSONALES */}
+                    <section className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <h2 className="text-xl font-bold mb-4">Datos Personales</h2>
+
+                        <div className="space-y-4">
+
+                            <div>
+                                <label className="text-sm">Nombre completo</label>
+                                <input
+                                    className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded"
+                                    value={form.name}
+                                    onChange={e => setForm({ ...form, name: e.target.value })}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-sm">Teléfono</label>
+                                <input
+                                    className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded"
+                                    value={form.phone}
+                                    onChange={e => setForm({ ...form, phone: e.target.value })}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-sm">Fecha de nacimiento</label>
+                                <input
+                                    type="date"
+                                    className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded"
+                                    value={form.birth_date}
+                                    onChange={e => setForm({ ...form, birth_date: e.target.value })}
+                                />
+                            </div>
+
+                            <button
+                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg mt-4"
+                                onClick={saveProfile}
+                            >
+                                Guardar Cambios
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* CONTRASEÑA */}
+                    <section className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <h2 className="text-xl font-bold mb-4">Cambiar Contraseña</h2>
+
+                        <div className="space-y-4">
+
+                            <div>
+                                <label className="text-sm">Contraseña actual</label>
+                                <input
+                                    type="password"
+                                    className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded"
+                                    value={passwordForm.current}
+                                    onChange={e => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-sm">Nueva contraseña</label>
+                                <input
+                                    type="password"
+                                    className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded"
+                                    value={passwordForm.new}
+                                    onChange={e => setPasswordForm({ ...passwordForm, new: e.target.value })}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-sm">Confirmar nueva contraseña</label>
+                                <input
+                                    type="password"
+                                    className="w-full mt-1 p-3 bg-slate-700 border border-slate-600 rounded"
+                                    value={passwordForm.confirm}
+                                    onChange={e => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                                />
+                            </div>
+
+                            <button
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg mt-4"
+                                onClick={changePassword}
+                            >
+                                Actualizar Contraseña
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* PREFERENCIAS */}
+                    <section className="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                        <h2 className="text-xl font-bold mb-4">Preferencias de Recomendación</h2>
+
+                        <div className="space-y-4">
+
+                            <div>
+                                <label className="text-sm block mb-1">Géneros favoritos</label>
+                                <input
+                                    placeholder="Ej: acción, comedia, drama"
+                                    className="w-full p-3 bg-slate-700 border border-slate-600 rounded"
+                                    value={preferences.favorite_genres.join(", ")}
+                                    onChange={e =>
+                                        setPreferences({
+                                            ...preferences,
+                                            favorite_genres: e.target.value.split(",").map(g => g.trim())
+                                        })
+                                    }
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={preferences.notification_email}
+                                        onChange={e =>
+                                            setPreferences({ ...preferences, notification_email: e.target.checked })
+                                        }
+                                    />
+                                    Recibir confirmaciones por email
+                                </label>
+
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={preferences.notification_promotions}
+                                        onChange={e =>
+                                            setPreferences({ ...preferences, notification_promotions: e.target.checked })
+                                        }
+                                    />
+                                    Recibir promociones
+                                </label>
+
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={preferences.notification_reminders}
+                                        onChange={e =>
+                                            setPreferences({ ...preferences, notification_reminders: e.target.checked })
+                                        }
+                                    />
+                                    Recordatorios de funciones
+                                </label>
+                            </div>
+
+                            <button
+                                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg mt-4"
+                                onClick={savePreferences}
+                            >
+                                Guardar Preferencias
+                            </button>
+                        </div>
+                    </section>
+
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById("profileContainer"))
+            .render(<ProfilePage />);
+
+    </script>
+
+</body>
+
+</html>

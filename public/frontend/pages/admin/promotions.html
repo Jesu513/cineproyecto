@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Promociones</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div class="flex">
+
+        <!-- Sidebar admin -->
+        <div id="adminSidebar" class="w-64"></div>
+
+        <!-- Main content -->
+        <main class="flex-1 p-10">
+
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-4xl font-bold">🎁 Gestión de Promociones</h1>
+                <button onclick="openCreateModal()"
+                    class="bg-sky-600 hover:bg-sky-500 px-4 py-2 rounded-lg">
+                    + Nueva Promoción
+                </button>
+            </div>
+
+            <!-- Filtros -->
+            <div class="flex gap-4 mb-6">
+                <input id="searchInput" type="text" placeholder="Buscar promoción..."
+                    class="px-4 py-2 w-72 bg-slate-800 border border-slate-700 rounded" />
+
+                <select id="filterStatus" class="px-4 py-2 bg-slate-800 border border-slate-700 rounded">
+                    <option value="">Todas</option>
+                    <option value="1">Activas</option>
+                    <option value="0">Inactivas</option>
+                </select>
+            </div>
+
+            <!-- Tabla -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-slate-700 text-left">
+                            <th class="p-3">Código</th>
+                            <th class="p-3">Nombre</th>
+                            <th class="p-3">Tipo</th>
+                            <th class="p-3">Valor</th>
+                            <th class="p-3">Vigencia</th>
+                            <th class="p-3">Estado</th>
+                            <th class="p-3">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="promoTable"></tbody>
+                </table>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- COMPONENTS -->
+    <script type="text/babel" src="../../components/AdminSidebar.jsx"></script>
+    <script type="text/babel" src="../../components/Modal.jsx"></script>
+    <script src="../../utils/api.js"></script>
+
+    <!-- PAGE LOGIC -->
+    <script type="text/babel">
+
+        // Sidebar
+        ReactDOM.createRoot(document.getElementById("adminSidebar"))
+            .render(<AdminSidebar active="promotions" />);
+
+        let promoList = [];
+
+        // ============================
+        // 1. Cargar promociones
+        // ============================
+        async function loadPromotions() {
+            const res = await api.get("/promotions/active?includeAll=true");
+            promoList = res.data || [];
+            redrawTable();
+        }
+
+        // ============================
+        // 2. Dibujar tabla
+        // ============================
+        function redrawTable() {
+            const tbody = document.getElementById("promoTable");
+            tbody.innerHTML = "";
+
+            const search = document.getElementById("searchInput").value.toLowerCase();
+            const statusFilter = document.getElementById("filterStatus").value;
+
+            promoList
+                .filter(p => p.code.toLowerCase().includes(search) ||
+                             p.name.toLowerCase().includes(search))
+                .filter(p => statusFilter === "" || String(p.is_active) === statusFilter)
+                .forEach(p => {
+
+                    const statusBadge = p.is_active
+                        ? `<span class="px-3 py-1 rounded bg-emerald-600 text-sm">Activa</span>`
+                        : `<span class="px-3 py-1 rounded bg-red-600 text-sm">Inactiva</span>`;
+
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b border-slate-700";
+
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold">${p.code}</td>
+                        <td class="p-3">${p.name}</td>
+                        <td class="p-3 capitalize">${p.discount_type}</td>
+                        <td class="p-3">${p.discount_value}</td>
+                        <td class="p-3">${p.valid_from} → ${p.valid_until}</td>
+                        <td class="p-3">${statusBadge}</td>
+                        <td class="p-3">
+                            <button class="text-sky-400 hover:text-sky-300 mr-3"
+                                onclick="editPromotion(${p.id})">
+                                Editar
+                            </button>
+
+                            <button class="text-red-400 hover:text-red-300"
+                                onclick="togglePromotion(${p.id}, ${p.is_active})">
+                                ${p.is_active ? "Desactivar" : "Activar"}
+                            </button>
+                        </td>
+                    `;
+
+                    tbody.appendChild(tr);
+                });
+        }
+
+        // ============================
+        // 3. Activar / desactivar
+        // ============================
+        async function togglePromotion(id, current) {
+            await api.patch(`/promotions/${id}/status`, { is_active: !current });
+            loadPromotions();
+        }
+
+        // ============================
+        // 4. Modal para crear promoción
+        // ============================
+        function openCreateModal() {
+            openPromoModal({
+                id: null,
+                code: "",
+                name: "",
+                discount_type: "percentage",
+                discount_value: 10,
+                valid_from: "",
+                valid_until: "",
+                max_uses: 0,
+                is_active: true
+            });
+        }
+
+        // ============================
+        // 5. Modal para edición
+        // ============================
+        function editPromotion(id) {
+            const promo = promoList.find(p => p.id === id);
+            openPromoModal(promo);
+        }
+
+        // ============================
+        // 6. Modal dinámico
+        // ============================
+        function openPromoModal(promo) {
+
+            const content = (
+                <div className="space-y-4">
+
+                    <input id="pm_code" defaultValue={promo.code}
+                           placeholder="Código"
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <input id="pm_name" defaultValue={promo.name}
+                           placeholder="Nombre promoción"
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <select id="pm_type" defaultValue={promo.discount_type}
+                            className="w-full p-2 bg-slate-800 border border-slate-700 rounded">
+                        <option value="percentage">Porcentaje (%)</option>
+                        <option value="fixed">Descuento fijo (S/)</option>
+                        <option value="2x1">2x1</option>
+                        <option value="matinee">Matinée</option>
+                    </select>
+
+                    <input id="pm_value" type="number" step="0.01"
+                           defaultValue={promo.discount_value}
+                           placeholder="Valor de descuento"
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <div className="flex gap-4">
+                        <input id="pm_from" type="date"
+                               defaultValue={promo.valid_from}
+                               className="p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                        <input id="pm_until" type="date"
+                               defaultValue={promo.valid_until}
+                               className="p-2 bg-slate-800 border border-slate-700 rounded" />
+                    </div>
+
+                    <input id="pm_uses" type="number"
+                           placeholder="Usos máximos"
+                           defaultValue={promo.max_uses}
+                           className="w-full p-2 bg-slate-800 border border-slate-700 rounded" />
+
+                    <div className="flex items-center gap-2">
+                        <input id="pm_active" type="checkbox" defaultChecked={promo.is_active} />
+                        <label>Promoción activa</label>
+                    </div>
+
+                </div>
+            );
+
+            Modal.show({
+                title: promo.id ? "Editar Promoción" : "Crear Promoción",
+                content,
+                confirmText: "Guardar",
+                onConfirm: async () => {
+
+                    const payload = {
+                        code: document.getElementById("pm_code").value,
+                        name: document.getElementById("pm_name").value,
+                        discount_type: document.getElementById("pm_type").value,
+                        discount_value: parseFloat(document.getElementById("pm_value").value),
+                        valid_from: document.getElementById("pm_from").value,
+                        valid_until: document.getElementById("pm_until").value,
+                        max_uses: parseInt(document.getElementById("pm_uses").value),
+                        is_active: document.getElementById("pm_active").checked
+                    };
+
+                    if (promo.id) {
+                        await api.put(`/promotions/${promo.id}`, payload);
+                    } else {
+                        await api.post(`/promotions`, payload);
+                    }
+
+                    loadPromotions();
+                }
+            });
+        }
+
+        // ============================
+        // 7. Eventos de búsqueda y filtros
+        // ============================
+        document.getElementById("searchInput").onkeyup = redrawTable;
+        document.getElementById("filterStatus").onchange = redrawTable;
+
+        // Inicializar página
+        loadPromotions();
+
+    </script>
+
+</body>
+</html>

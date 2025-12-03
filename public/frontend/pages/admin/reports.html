@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Reportes</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-slate-900 text-white">
+
+    <div class="flex">
+
+        <!-- Sidebar admin -->
+        <div id="adminSidebar" class="w-64"></div>
+
+        <!-- Main content -->
+        <main class="flex-1 p-10 space-y-10">
+
+            <h1 class="text-4xl font-bold mb-6">📊 Reportes y Analítica</h1>
+
+            <!-- Fila 1 ─ Ingresos + Ocupación -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-slate-800 rounded-xl p-6 shadow-lg">
+                    <h2 class="text-xl font-semibold mb-3">Ingresos por Mes</h2>
+                    <canvas id="salesChart" height="120"></canvas>
+                </div>
+
+                <div class="bg-slate-800 rounded-xl p-6 shadow-lg">
+                    <h2 class="text-xl font-semibold mb-3">Ocupación de Salas (%)</h2>
+                    <canvas id="occupancyChart" height="120"></canvas>
+                </div>
+            </div>
+
+            <!-- Fila 2 ─ Películas + Géneros -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-slate-800 rounded-xl p-6 shadow-lg">
+                    <h2 class="text-xl font-semibold mb-3">Películas Más Vistas</h2>
+                    <canvas id="topMoviesChart" height="120"></canvas>
+                </div>
+
+                <div class="bg-slate-800 rounded-xl p-6 shadow-lg">
+                    <h2 class="text-xl font-semibold mb-3">Preferencias por Género</h2>
+                    <canvas id="genreChart" height="120"></canvas>
+                </div>
+            </div>
+
+            <!-- Fila 3 ─ Estados de Reserva -->
+            <div class="bg-slate-800 rounded-xl p-6 shadow-lg">
+                <h2 class="text-xl font-semibold mb-3">Estado de Reservas</h2>
+                <canvas id="bookingStatusChart" height="100"></canvas>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- COMPONENTS -->
+    <script type="text/babel" src="../../components/AdminSidebar.jsx"></script>
+    <script src="../../utils/api.js"></script>
+
+    <script type="text/babel">
+
+        // Render Sidebar
+        ReactDOM.createRoot(document.getElementById("adminSidebar"))
+            .render(<AdminSidebar active="reports" />);
+
+        // ============================
+        //  Cargar datos de la API
+        // ============================
+
+        async function loadReportData() {
+
+            const [
+                sales,
+                occupancy,
+                topMovies,
+                genres,
+                bookingStatus
+            ] = await Promise.all([
+                api.get("/reports/sales"),
+                api.get("/reports/occupancy"),
+                api.get("/reports/top-movies"),
+                api.get("/reports/genres"),
+                api.get("/reports/bookings-status")
+            ]);
+
+            renderSalesChart(sales.data);
+            renderOccupancyChart(occupancy.data);
+            renderTopMoviesChart(topMovies.data);
+            renderGenreChart(genres.data);
+            renderBookingStatusChart(bookingStatus.data);
+        }
+
+        // ============================
+        //  GRÁFICOS (Chart.js)
+        // ============================
+
+        function renderSalesChart(data) {
+            new Chart(document.getElementById("salesChart"), {
+                type: "line",
+                data: {
+                    labels: data.map(d => d.month),
+                    datasets: [{
+                        label: "Ingresos (S/.)",
+                        data: data.map(d => d.total),
+                        borderColor: "#38bdf8",
+                        backgroundColor: "rgba(56, 189, 248, 0.2)",
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true }
+            });
+        }
+
+        function renderOccupancyChart(data) {
+            new Chart(document.getElementById("occupancyChart"), {
+                type: "bar",
+                data: {
+                    labels: data.map(d => d.room_name),
+                    datasets: [{
+                        label: "Ocupación (%)",
+                        data: data.map(d => d.percentage),
+                        backgroundColor: "#22c55e"
+                    }]
+                }
+            });
+        }
+
+        function renderTopMoviesChart(data) {
+            new Chart(document.getElementById("topMoviesChart"), {
+                type: "bar",
+                data: {
+                    labels: data.map(d => d.title),
+                    datasets: [{
+                        label: "Vistas",
+                        data: data.map(d => d.views),
+                        backgroundColor: "#fbbf24"
+                    }]
+                }
+            });
+        }
+
+        function renderGenreChart(data) {
+            new Chart(document.getElementById("genreChart"), {
+                type: "doughnut",
+                data: {
+                    labels: data.map(d => d.genre),
+                    datasets: [{
+                        label: "Preferencias",
+                        data: data.map(d => d.count),
+                        backgroundColor: [
+                            "#ef4444",
+                            "#3b82f6",
+                            "#22c55e",
+                            "#a855f7",
+                            "#f59e0b"
+                        ]
+                    }]
+                }
+            });
+        }
+
+        function renderBookingStatusChart(data) {
+            new Chart(document.getElementById("bookingStatusChart"), {
+                type: "pie",
+                data: {
+                    labels: ["Confirmadas", "Pendientes", "Canceladas", "Expiradas"],
+                    datasets: [{
+                        data: [
+                            data.confirmed,
+                            data.pending,
+                            data.cancelled,
+                            data.expired
+                        ],
+                        backgroundColor: [
+                            "#22c55e",
+                            "#3b82f6",
+                            "#ef4444",
+                            "#fbbf24"
+                        ]
+                    }]
+                }
+            });
+        }
+
+        // Inicializar
+        loadReportData();
+
+    </script>
+
+</body>
+</html>

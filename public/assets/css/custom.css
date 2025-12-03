@@ -1,0 +1,170 @@
+/* ============================================================
+   CUSTOM.CSS — Estilos generales del frontend público
+   ============================================================ */
+
+/* Reset básico */
+body {
+    background: #0f0f0f;
+    color: #e5e5e5;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* ------------------------------------
+   NAVBAR
+--------------------------------------- */
+.navbar {
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #222;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.navbar a {
+    color: #e5e5e5;
+    text-decoration: none;
+    padding: 10px 16px;
+    transition: 0.2s;
+}
+
+.navbar a:hover {
+    color: #00bcd4;
+}
+
+/* ------------------------------------
+   BOTONES GENERALES
+--------------------------------------- */
+
+.btn-primary {
+    background: #00bcd4;
+    color: #0f0f0f;
+    padding: 10px 16px;
+    border-radius: 8px;
+    transition: 0.2s;
+}
+
+.btn-primary:hover {
+    background: #009ab0;
+}
+
+.btn-danger {
+    background: #d32f2f;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+}
+
+.btn-danger:hover {
+    background: #b71c1c;
+}
+
+.btn-outline {
+    border: 1px solid #00bcd4;
+    color: #00bcd4;
+    padding: 10px 16px;
+    border-radius: 8px;
+    transition: 0.2s;
+}
+
+.btn-outline:hover {
+    background: #00bcd43b;
+}
+
+/* ------------------------------------
+   TARJETAS DE PELÍCULAS
+--------------------------------------- */
+
+.movie-card {
+    background: #1b1b1b;
+    padding: 12px;
+    border-radius: 10px;
+    transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.movie-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 15px rgba(0, 188, 212, 0.2);
+}
+
+.movie-card img {
+    border-radius: 8px;
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+}
+
+/* ------------------------------------
+   FORMULARIOS
+--------------------------------------- */
+input, select, textarea {
+    background: #222;
+    border: 1px solid #333;
+    padding: 10px;
+    border-radius: 6px;
+    color: #e5e5e5;
+    width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #00bcd4;
+}
+
+/* ------------------------------------
+   TABLAS
+--------------------------------------- */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.table thead {
+    background: #222;
+}
+
+.table th, .table td {
+    padding: 12px;
+    border-bottom: 1px solid #333;
+    text-align: left;
+}
+
+.table tbody tr:hover {
+    background: #1c1c1c;
+}
+
+/* ------------------------------------
+   ASIENTOS (página seat-selection)
+--------------------------------------- */
+
+.seat {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.seat.available { background: #2e7d32; }
+.seat.selected { background: #0277bd; }
+.seat.occupied { background: #b71c1c; cursor: not-allowed; }
+.seat.vip { border: 2px solid gold; }
+
+/* ------------------------------------
+   ANIMACIONES
+--------------------------------------- */
+
+.fade-in {
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
